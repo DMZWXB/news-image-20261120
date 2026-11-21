@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Render the 1024x1024 news infographic for make.fun news-image-20261120.
+"""Render the 1024x1024 news infographic for make.fun news-image-20261120 (v2).
 
-All drawing is code-only (PIL primitives): no external images, photos or
-logos. Fonts are DejaVu from /usr/share/fonts. Output is deterministic:
+31 stories from Friday 20 November 2026, all checked against same-day
+reporting. Code-only drawing (PIL primitives): no external images, photos
+or logos. Fonts are DejaVu from /usr/share/fonts. Output is deterministic:
 same input produces the same PNG bytes.
+
+Layout: masthead (with a same-day verification line) + one lead story +
+"The day in brief": 30 compact items in 3 columns x 10 rows, grouped by
+region, each with its source named.
 """
 import math
 from PIL import Image, ImageDraw, ImageFont
@@ -79,165 +84,121 @@ def starburst(draw, cx, cy, r_out, r_in, n=8, fill=RED):
 def icon_bridge(draw, x, y, s):
     """Bridge silhouette + red burst. Box (x, y, s, s)."""
     cx, cy = x + s // 2, y + s // 2
-    # burst above the deck
     starburst(draw, cx, y + s * 0.22, s * 0.20, s * 0.09, fill=RED)
-    # deck
     draw.line([(x + s * 0.06, cy + s * 0.18), (x + s * 0.94, cy + s * 0.18)],
               fill=INK, width=max(3, s // 28))
-    # two arches
     draw.arc([x + s * 0.08, cy - s * 0.02, x + s * 0.48, cy + s * 0.42],
              180, 360, fill=INK, width=max(3, s // 28))
     draw.arc([x + s * 0.52, cy - s * 0.02, x + s * 0.92, cy + s * 0.42],
              180, 360, fill=INK, width=max(3, s // 28))
-    # supports
     for fx in (0.08, 0.28, 0.48, 0.68, 0.88):
         draw.line([(x + s * fx, cy + s * 0.18), (x + s * fx, cy + s * 0.44)],
                   fill=INK, width=max(2, s // 40))
-    # water lines
-    for i, wy in enumerate((0.56, 0.66)):
+    for wy in (0.56, 0.66):
         draw.line([(x + s * 0.10, cy + s * wy), (x + s * 0.90, cy + s * wy)],
                   fill=TEAL, width=max(2, s // 40))
 
 
-def icon_deal(draw, x, y, s):
-    """Document with a red seal. Box (x, y, s, s)."""
-    dw, dh = s * 0.62, s * 0.78
-    ox, oy = x + s * 0.06, y + s * 0.10
-    draw.rectangle([ox, oy, ox + dw, oy + dh], fill=WHITE, outline=INK,
-                   width=max(3, s // 28))
-    # folded corner
-    draw.polygon([(ox + dw - s * 0.16, oy), (ox + dw, oy + s * 0.16),
-                  (ox + dw - s * 0.16, oy + s * 0.16)], fill=HAIR)
-    for i in range(3):
-        ly = oy + dh * (0.28 + i * 0.18)
-        draw.line([(ox + dw * 0.14, ly), (ox + dw * 0.86, ly)],
-                  fill=GRAY, width=max(2, s // 40))
-    # red seal
-    sx, sy, sr = x + s * 0.72, y + s * 0.74, s * 0.20
-    draw.ellipse([sx - sr, sy - sr, sx + sr, sy + sr], fill=RED)
-    draw.line([(sx - sr * 0.45, sy), (sx - sr * 0.08, sy + sr * 0.42),
-               (sx + sr * 0.5, sy - sr * 0.42)], fill=WHITE,
-              width=max(3, s // 24), joint="curve")
-
-
-def icon_chart(draw, x, y, s):
-    """Falling market chart with red arrow. Box (x, y, s, s)."""
-    # axes
-    draw.line([(x + s * 0.10, y + s * 0.12), (x + s * 0.10, y + s * 0.88)],
-              fill=GRAY, width=max(2, s // 40))
-    draw.line([(x + s * 0.10, y + s * 0.88), (x + s * 0.92, y + s * 0.88)],
-              fill=GRAY, width=max(2, s // 40))
-    pts = [(0.14, 0.30), (0.30, 0.26), (0.44, 0.44), (0.58, 0.40),
-           (0.72, 0.62), (0.86, 0.74)]
-    xy = [(x + s * px, y + s * py) for px, py in pts]
-    draw.line(xy, fill=INK, width=max(4, s // 22), joint="curve")
-    # red down arrow at the end
-    ex, ey = xy[-1]
-    draw.polygon([(ex - s * 0.02, ey - s * 0.16), (ex + s * 0.10, ey - s * 0.02),
-                  (ex - s * 0.10, ey + s * 0.06)], fill=RED)
-    draw.line([(ex - s * 0.02, ey - s * 0.16), (ex + s * 0.02, ey + s * 0.10)],
-              fill=RED, width=max(4, s // 22))
-
-
-def icon_cyclone(draw, x, y, s):
-    """Spiral. Box (x, y, s, s)."""
-    cx, cy = x + s // 2, y + s // 2
-    pts = []
-    steps = 90
-    for i in range(steps + 1):
-        t = i / steps * 3.2 * math.pi
-        r = s * 0.04 + s * 0.115 * t / math.pi
-        pts.append((cx + r * math.cos(t), cy + r * math.sin(t)))
-    draw.line(pts, fill=TEAL, width=max(4, s // 22), joint="curve")
-    draw.ellipse([cx - s * 0.05, cy - s * 0.05, cx + s * 0.05, cy + s * 0.05],
-                 fill=RED)
-
-
-def icon_shield(draw, x, y, s):
-    """Shield with check. Box (x, y, s, s)."""
-    pts = [(x + s * 0.08, y + s * 0.10), (x + s * 0.92, y + s * 0.10),
-           (x + s * 0.92, y + s * 0.52), (x + s * 0.50, y + s * 0.92),
-           (x + s * 0.08, y + s * 0.52)]
-    draw.polygon(pts, fill=BLUE)
-    draw.line([(x + s * 0.28, y + s * 0.48), (x + s * 0.44, y + s * 0.64),
-               (x + s * 0.74, y + s * 0.30)], fill=WHITE,
-              width=max(5, s // 18), joint="curve")
-
-
-ICONS = {"bridge": icon_bridge, "deal": icon_deal, "chart": icon_chart,
-         "cyclone": icon_cyclone, "shield": icon_shield}
+ICONS = {"bridge": icon_bridge}
 
 LEAD = {
     "num": "1", "kicker": "WAR IN UKRAINE", "icon": "bridge",
     "headline": "Russia Strikes Kyiv Bridges, Missiles Land in Poland",
-    "summary": ("Overnight barrage hit three Kyiv bridges, killing eight and "
-                "injuring 28; two missiles and a drone fell in Poland."),
+    "summary": ("Overnight barrage hit three Kyiv bridges; two missiles "
+                "and a drone fell in Poland."),
     "stat": "8 DEAD  ·  28 INJURED  ·  400+ DRONES",
 }
 
-GRID = [
-    {"num": "2", "kicker": "UK–EU SUMMIT", "icon": "deal",
-     "headline": "UK and EU Seal Post-Brexit Reset Deal",
-     "summary": ("Brussels summit agreed food-trade easing, linked carbon "
-                 "markets, and youth mobility for 100,000 people a year."),
-     "stat": "100,000 / YEAR  ·  3 YEARS"},
-    {"num": "3", "kicker": "MARKETS", "icon": "chart",
-     "headline": "Asian Stocks Plunge as AI Sell-Off Deepens",
-     "summary": ("Japan's Nikkei fell 4.8% to a seven-month low, SoftBank "
-                 "plunged about 15%, and South Korea's KOSPI dropped 4.7%."),
-     "stat": "NIKKEI −4.8%  ·  SOFTBANK −15%"},
-    {"num": "4", "kicker": "WEATHER", "icon": "cyclone",
-     "headline": "Cyclone Akvan Hits India's Eastern Coast",
-     "summary": ("Akvan made landfall near Gopalpur with 70–80 km/h winds "
-                 "after more than 300,000 people were evacuated to shelters."),
-     "stat": "300,000+ EVACUATED  ·  9,341 SHELTERS"},
-    {"num": "5", "kicker": "MIDDLE EAST", "icon": "shield",
-     "headline": "Saudi Arabia Intercepts Houthi Missile, Drones",
-     "summary": ("The Saudi-led coalition said it shot down a Houthi ballistic "
-                 "missile and two drones aimed at southern Saudi Arabia."),
-     "stat": "1 MISSILE  ·  2 DRONES DOWN"},
+# 30 brief items, region order: Europe, Middle East, Africa, East Asia,
+# South Asia, Southeast Asia, Oceania, Americas. Each: region tag, source,
+# headline (key figure embedded where there is one).
+BRIEF = [
+    ("EUROPE", "Al Jazeera", "UK and EU Seal Post-Brexit Reset Deal"),
+    ("EUROPE", "Reuters", "Students March Over Prices and Military Spending"),
+    ("EUROPE", "Reuters", "Eurozone Consumer Confidence Rises in November"),
+    ("UK", "Reuters", "UK Fixes Fridge-Freezer Flaw After EU Hacks"),
+    ("GERMANY", "Reuters", "German Minister Sorry for 'Stupid' Jibe at US"),
+    ("SPAIN", "Reuters", "Feijóo Wins TV Debate 51%–29%, Polls Show"),
+    ("MIDDLE EAST", "Malay Mail", "Saudi Arabia Intercepts Houthi Missile, Drones"),
+    ("GAZA", "AFP", "Israeli Strikes Kill Six in Gaza, Medics Say"),
+    ("IRAQ", "Al Jazeera", "Iraqi Army Moves Into Militia Stronghold"),
+    ("IRAN", "AP", "Trump Says Iran Wants a Nuclear Deal"),
+    ("IRAN", "Al Jazeera", "Iran Rules Out Shipping Uranium Abroad"),
+    ("ANGOLA", "Reuters", "Angola to Buy 10% of De Beers for $180m"),
+    ("NIGERIA", "Reuters", "Rescue After Funeral Boat Capsizes in Nigeria"),
+    ("NIGERIA", "Reuters", "Nigeria VP Urges Banks to Lend More to Farms"),
+    ("MIGRATION", "Africanews", "UN, Senegal Push Back on Migrant Smuggling"),
+    ("MARKETS", "Morningstar", "Nikkei −4.8% as AI Sell-Off Hits Asia"),
+    ("JAPAN", "Reuters", "Japan Core Inflation Hits 2.2%, Year's High"),
+    ("CHINA", "Reuters", "China Holds Loan Rates for 18th Month"),
+    ("SOUTH KOREA", "BOK", "South Korea Producer Prices Edge Down 0.1%"),
+    ("WEATHER", "Reuters", "Cyclone Akvan Hits India; 300,000 Evacuated"),
+    ("INDIA", "PTI", "India Launches First Homegrown Bird-Flu Vaccine"),
+    ("INDIA", "PTI", "Four Cheetah Cubs Born in India; Total Now 62"),
+    ("THAILAND", "Khaosod English", "Thai–China Rail Link to Reach Malaysia, Singapore"),
+    ("SINGAPORE", "Straits Times", "Singapore, China Open FTA Upgrade Talks"),
+    ("AUSTRALIA", "BBC", "Cricket Australia Backs Captain Cummins"),
+    ("OCEANIA", "GAC Canada", "Australia, Canada, NZ Urge Russia Ceasefire"),
+    ("MEXICO", "NY Post", "Mexico Army Captures Drug Lord 'Chapo Isidro'"),
+    ("EL SALVADOR", "Reuters", "Bukele Registers to Run for Third Term"),
+    ("VENEZUELA", "AP", "US, Venezuela Resume Military Cooperation"),
+    ("CANADA", "Washington Post", "US Curbs Military Cooperation With Canada"),
 ]
 
 
 def draw_block(draw, x, y, w, h, item, headline_size, summary_size,
                icon_size, kicker_size=19, stat_size=19):
     draw.rectangle([x, y, x + w, y + h], fill=WHITE, outline=INK, width=2)
-    # red number badge
     bs = 34
     draw.rectangle([x, y, x + bs, y + bs], fill=RED)
     bf = font(F_SANS_B, 20)
     tw = draw.textlength(item["num"], font=bf)
     draw.text((x + (bs - tw) / 2, y + 5), item["num"], font=bf, fill=WHITE)
-    # kicker
     kf = font(F_SANS_B, kicker_size)
     draw_tracked(draw, (x + bs + 12, y + 8), item["kicker"], kf, RED, tracking=2)
-    # icon on the right
     ix = x + w - icon_size - 16
     iy = y + 14
     ICONS[item["icon"]](draw, ix, iy, icon_size)
-    # headline (left of icon)
     hw = w - icon_size - 16 - (bs + 12) - 24
     hf, hlines = fit_lines(draw, item["headline"], font(F_SANS_B, headline_size),
                            hw, 2, 20, F_SANS_B)
-    hy = y + 48
+    hy = y + 44
     for ln in hlines:
         draw.text((x + 16, hy), ln, font=hf, fill=INK)
         hy += hf.size + 4
-    # summary
     sf = font(F_SANS, summary_size)
     sw = w - 32
     slines = wrap(draw, item["summary"], sf, sw)
-    sy = hy + 6
-    for ln in slines:
-        draw.text((x + 16, sy), ln, font=sf, fill=(52, 50, 46))
-        sy += sf.size + 5
-    # stat line: pinned to the bottom, but never overlapping the summary
+    if len(slines) > 1:
+        raise RuntimeError(f"lead summary must fit one line: {item['summary']!r}")
+    sy = hy + 4
+    draw.text((x + 16, sy), slines[0], font=sf, fill=(52, 50, 46))
+    sy += sf.size + 5
     stf = font(F_SANS_B, stat_size)
-    stat_y = max(y + h - stat_size - 14, sy + 10)
+    stat_y = max(y + h - stat_size - 14, sy + 6)
     if stat_y + stat_size + 6 > y + h:
-        raise RuntimeError(f"block {item['num']} overflows: summary ends {sy}, box ends {y + h}")
+        raise RuntimeError(f"lead block overflows: stat at {stat_y}, box ends {y + h}")
     draw.text((x + 16, stat_y), item["stat"], font=stf, fill=RED)
-    return sy
+
+
+def draw_brief_item(draw, x, y, w, h, region, source, headline):
+    """One compact brief row: red region tag + gray source, bold headline
+    (max 2 lines), hairline at the bottom. Raises on overflow."""
+    # tag line
+    tf = font(F_SANS_B, 12)
+    rx = draw_tracked(draw, (x, y + 2), region, tf, RED, tracking=1)
+    sf = font(F_SANS, 12)
+    draw.text((rx + 4, y + 2), "· " + source, font=sf, fill=GRAY)
+    # headline, max 2 lines, shrink 15 -> 13
+    hf, hlines = fit_lines(draw, headline, font(F_SANS_B, 15), w, 2, 13,
+                           F_SANS_B)
+    hy = y + 20
+    for ln in hlines:
+        draw.text((x, hy), ln, font=hf, fill=INK)
+        hy += hf.size + 3
+    if hy > y + h - 4:
+        raise RuntimeError(f"brief item overflows: {headline!r} ends {hy}, row ends {y + h}")
+    draw.line([(x, y + h - 1), (x + w, y + h - 1)], fill=HAIR, width=1)
 
 
 def main():
@@ -245,51 +206,80 @@ def main():
     draw = ImageDraw.Draw(img)
 
     # --- masthead ---
-    y = 30
-    kf = font(F_SANS_B, 21)
+    y = 26
+    kf = font(F_SANS_B, 20)
     draw_tracked(draw, (MARGIN, y), "THE WORLD IN ONE DAY", kf, GRAY, tracking=5)
-    y += 34
-    # date, auto-fit to content width
+    y += 30
     date_text = "FRIDAY 20 NOVEMBER 2026"
-    size = 62
+    size = 54
     while size > 30:
         df = font(F_SERIF, size)
         if draw.textlength(date_text, font=df) <= CW:
             break
         size -= 2
     draw.text((MARGIN, y), date_text, font=df, fill=INK)
-    y += size + 12
-    sf = font(F_SANS, 24)
-    draw.text((MARGIN, y), "The day in five stories — war, diplomacy, markets, weather, and the Gulf.",
+    y += size + 10
+    sf = font(F_SANS, 21)
+    draw.text((MARGIN, y),
+              "Thirty-one stories from six continents — war, diplomacy, markets, weather and more.",
               font=sf, fill=GRAY)
-    y += 36
+    y += 28
+    vf = font(F_SANS_B, 13)
+    draw_tracked(draw, (MARGIN, y),
+                 "EVERY STORY CHECKED AGAINST SAME-DAY REPORTING · ALL EVENTS 20 NOV 2026 (UTC)",
+                 vf, RED, tracking=1)
+    y += 20
     draw.line([(MARGIN, y), (W - MARGIN, y)], fill=RED, width=6)
-    y += 10
+    y += 6
     draw.line([(MARGIN, y), (W - MARGIN, y)], fill=INK, width=2)
-    y += 16
+    y += 8
+    mast_end = y
 
     # --- lead story ---
-    lead_h = 238
-    draw_block(draw, MARGIN, y, CW, lead_h, LEAD, headline_size=40,
-               summary_size=23, icon_size=150, kicker_size=20, stat_size=20)
-    y += lead_h + 16
+    lead_h = 162
+    draw_block(draw, MARGIN, mast_end, CW, lead_h, LEAD, headline_size=26,
+               summary_size=18, icon_size=100, kicker_size=18, stat_size=18)
+    y = mast_end + lead_h + 10
 
-    # --- 2x2 grid ---
-    gap = 16
-    gw = (CW - gap) // 2
-    gh = 255
-    for i, item in enumerate(GRID):
-        gx = MARGIN + (i % 2) * (gw + gap)
-        gy = y + (i // 2) * (gh + gap)
-        draw_block(draw, gx, gy, gw, gh, item, headline_size=27,
-                   summary_size=20, icon_size=96, kicker_size=17, stat_size=17)
-    y = y + 2 * gh + gap + 14
+    # --- section header ---
+    hf = font(F_SANS_B, 16)
+    draw_tracked(draw, (MARGIN, y), "THE DAY IN BRIEF", hf, RED, tracking=2)
+    rf = font(F_SANS, 13)
+    right = "30 MORE STORIES · SOURCES NAMED WITH EACH"
+    rw = draw.textlength(right, font=rf)
+    draw.text((W - MARGIN - rw, y + 2), right, font=rf, fill=GRAY)
+    y += 20
+    draw.line([(MARGIN, y), (W - MARGIN, y)], fill=INK, width=1)
+    y += 6
+    brief_top = y
+
+    # --- brief grid: 3 columns x 10 rows, column-major ---
+    gap = 14
+    col_w = (CW - 2 * gap) // 3  # 308
+    row_h = 61
+    assert len(BRIEF) == 30, f"expected 30 brief items, got {len(BRIEF)}"
+    for col in range(3):
+        cx = MARGIN + col * (col_w + gap)
+        for row in range(10):
+            item = BRIEF[col * 10 + row]
+            iy = brief_top + row * row_h
+            draw_brief_item(draw, cx, iy, col_w, row_h, *item)
+    y = brief_top + 10 * row_h
+    if y > 992:
+        raise RuntimeError(f"brief grid ends at {y}, footer would overflow")
 
     # --- footer ---
-    ff = font(F_SANS, 16)
-    foot = "Sources: Al Jazeera  ·  Morningstar  ·  Reuters  ·  Malay Mail      All events 20 Nov 2026"
-    fw = draw.textlength(foot, font=ff)
-    draw.text(((W - fw) / 2, y), foot, font=ff, fill=GRAY)
+    ff = font(F_SANS, 12)
+    foot1 = ("Sources: Reuters · Al Jazeera · AP · AFP · Morningstar · Malay Mail · "
+             "PTI · BBC · WaPo · Khaosod · Straits Times · Africanews · BOK · "
+             "GAC Canada · NY Post")
+    fw = draw.textlength(foot1, font=ff)
+    if fw > CW:
+        raise RuntimeError(f"footer line 1 too wide: {fw:.0f}px > {CW}px")
+    draw.text(((W - fw) / 2, y + 4), foot1, font=ff, fill=GRAY)
+    foot2 = "All events 20 November 2026 (UTC) · Every story checked against same-day reporting"
+    fw2 = draw.textlength(foot2, font=ff)
+    draw.text(((W - fw2) / 2, y + 20), foot2, font=ff, fill=GRAY)
 
     img.save("entry.png", format="PNG", optimize=True)
     print("saved entry.png", img.size)

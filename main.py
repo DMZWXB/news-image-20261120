@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Entry program for make.fun news-image-20261120.
+"""Entry program for make.fun news-image-20261120 (v2).
 
 Writes the pre-rendered infographic to /output/entry.png.
 
 The image is bundled in this repository as entry.png (1024x1024 PNG,
-138,026 bytes) and is copied byte-for-byte, so two runs always produce
+169,283 bytes) and is copied byte-for-byte, so two runs always produce
 identical output. No network access, no third-party dependencies: the
 standard library only.
 """
